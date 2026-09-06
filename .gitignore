@@ -1,0 +1,21 @@
+# 빌드 산출물
+cmake-build-*/
+build/
+Builds/
+out/
+vcpkg_installed/
+
+# IDE
+.idea/
+.vs/
+*.user
+*.suo
+CMakeUserPresets.json
+.agents/
+.codex/
+.claude/
+
+# Local measurements and review notes are not publication inputs.
+/docs/benchmarks/
+/*LOAD_TEST_RESULTS.md
+/AOI_DESIGN_REVIEW.md

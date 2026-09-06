@@ -1,0 +1,51 @@
+# 이 저장소의 서식은 이 파일이 정한다. 규칙을 문장으로 적지 않고 파일로 두는 이유는,
+# 문장은 지켜지지 않아도 아무 일이 없지만 파일은 도구가 읽기 때문이다.
+#
+# 1) SortIncludes를 넣지 않는다. GameEngine은 Never로 두는데, 그쪽은 미리 컴파일된
+#    헤더가 항상 첫 줄이어야 하기 때문이다. 이 프로젝트에는 그 구조가 없으므로 그
+#    제약도 없고, 포함 순서를 도구가 정렬해도 해가 없다. 우리 인클루드 순서 규약은
+#    묶음 사이에 빈 줄을 두는데, clang-format은 빈 줄로 나뉜 묶음을 넘나들며 정렬하지
+#    않으므로 그 규약은 그대로 지켜진다.
+#
+# 2) ReflowComments를 false로 둔다. 한글은 한 글자가 두 열로 세어지므로 한국어 문서
+#    주석이 ColumnLimit 100을 넘고, 접기가 켜져 있으면 clang-format이 문장 한가운데를
+#    잘라 접는다. 이 프로젝트에서 주석은 곁들이는 설명이 아니라 산출물의 본체이므로
+#    그것은 서식 문제가 아니라 산출물 훼손이다. 열 제한은 코드 줄에 해가 없으므로
+#    100 그대로 두고 접기만 끈다.
+
+BasedOnStyle: Microsoft
+Language: Cpp
+Standard: c++20
+
+IndentWidth: 4
+ContinuationIndentWidth: 4
+UseTab: Never
+ColumnLimit: 100
+
+BreakBeforeBraces: Allman
+NamespaceIndentation: None
+IndentCaseLabels: false
+AccessModifierOffset: -4
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+FixNamespaceComments: false
+
+ReflowComments: false
+
+AlignAfterOpenBracket: DontAlign
+BinPackArguments: true
+BinPackParameters: true
+BreakConstructorInitializers: BeforeComma
+PackConstructorInitializers: Never
+EmptyLineBeforeAccessModifier: LogicalBlock
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 1
+SpaceAfterTemplateKeyword: true
+Cpp11BracedListStyle: false
