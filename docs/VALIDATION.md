@@ -1,35 +1,39 @@
 # 검증 결과
 
-2026-09-07에 GitHub 업로드용 소스와 검증 스크립트를 확인했다. 빌드·실행 방법은 [README](../README.md), 메시지 계약은 [PROTOCOL](../PROTOCOL.md)을 따른다.
+2026-09-07에 UDP 공통 처리를 ServerCore로 옮긴 SummitServer 소스를 검증했습니다. 빌드 방법은 [README](../README.md), 메시지 계약은 [PROTOCOL](../PROTOCOL.md)을 따릅니다.
 
 ## 검증 입력과 환경
 
-공개 대상 29개 파일을 별도 디렉터리에 복사하고 파일별 SHA-256을 대조했다. 원본 작업 디렉터리의 빌드 산출물을 사용하지 않고, GitHub에서 받은 [ServerCore `9cc9091`](https://github.com/JHPark0906/ServerCore/commit/9cc909169f9bd7c9d7d7a536b2a821942a7ea37f)을 형제 디렉터리에 두어 빌드했다. 이 결과 문서는 검증 후 추가했으며 나머지 공개 파일은 검증한 묶음과 동일하다.
+ServerCore와 SummitServer의 소스를 형제 디렉터리에 배치하고 기존 빌드 산출물을 재사용하지 않았습니다. ServerCore는 `Runtime::DatagramTransport`가 포함된 소스이며, SummitUdpTransport는 게임 메시지 검증·Hello 응답·backend 전달을 담당하는 어댑터입니다. 게임 엔진이나 클라이언트 에셋은 빌드 입력에 포함하지 않습니다.
 
-| 항목 | 환경 |
+| 항목 | 확인한 값 |
 | --- | --- |
 | 플랫폼 | Windows x64 |
-| 생성기 | Visual Studio 18 2026 |
-| CMake | 4.2.3-msvc3 |
-| MSVC | 19.50.35728.0 |
+| 컴파일러 | MSVC 19.50.35728.0 |
 | Windows SDK | 10.0.26100.0 |
-| 검증 스크립트 | Windows PowerShell 5.1 |
+| CMake | 4.2.3-msvc3 |
+| 생성기 | Visual Studio 18 2026, x64 |
+| CRT | Debug `/MDd`, Release `/MD` |
+
 
 ## 빌드와 회귀 결과
 
-[tools/VerifyBuild.ps1](../tools/VerifyBuild.ps1)을 저장소 밖의 작업 디렉터리에서 실행했다. 구성과 ServerCore 경로 인자를 생략해 Debug·Release 전체 실행 및 형제 의존성 경로를 확인했다. 서버, 부하 도구와 테스트 타깃을 모두 빌드한 뒤 각 구성의 CTest를 순서대로 실행했다.
+[tools/VerifyBuild.ps1](../tools/VerifyBuild.ps1)을 Windows PowerShell 5.1에서 실행했습니다. 구성과 ServerCore 경로 인자를 생략해 Debug·Release 전체 실행과 기본 형제 경로를 확인했습니다. 서버·부하 도구·테스트의 전체 빌드가 성공한 뒤 CTest를 순서대로 실행했습니다.
 
 | 구성 | 전체 빌드 | CTest | CTest 실행 시간 |
 | --- | --- | --- | --- |
-| Debug | 통과, 컴파일 경고 0개 | 8/8 통과 | 65.51초 |
-| Release | 통과, 컴파일 경고 0개 | 8/8 통과 | 63.19초 |
+| Debug | 통과, 경고 0개 | 8/8 | 35.63초 |
+| Release | 통과, 경고 0개 | 8/8 | 32.69초 |
 
-총 16회가 통과했다. 등록된 검사는 부하 도구 자체 검사, backend·AOI·콘솔 회귀와 실제 TCP·UDP 소켓을 사용하는 통합 검사다. 테스트는 자체 로컬 서버를 만들고 종료하며 외부 운영 서버나 게임 에셋을 요구하지 않는다.
+총 **16/16 통과**이며 실패하거나 건너뛴 검사는 없습니다. 부하 도구 자체 검사, backend·AOI·콘솔 회귀와 실제 TCP·UDP·CLI·공지 통합을 포함합니다. 테스트가 자체 loopback 서버를 만들고 종료하며 운영 서버에 접속하지 않습니다.
 
-- 필수 CTest 8개가 모두 등록되었고 ServerCore 자체 테스트는 OFF였다.
-- CMakeCache의 소스·의존성 경로가 검증 묶음을 가리켰다.
-- ServerCore와 서버·도구·테스트의 실제 컴파일 명령에서 Debug `/MDd`, Release `/MD` 및 `/W4 /WX` 설정이 일치했다.
-- JUnit 보고서가 `build/vs/ctest-debug.xml`, `build/vs/ctest-release.xml`에 생성되었다.
-- 최종 실행 뒤 29개 입력 파일의 SHA-256이 유지되었다.
+- schema 6과 `SMU1`·28바이트 머리·최대 1,200바이트 형식을 유지했습니다.
+- 양방향 UDP와 기존 TCP, 정확한 revision, 손상·금지된 고순번 메시지 거절과 정상 입력 회복을 확인했습니다.
+- 토큰 격리·재전송 거절·endpoint 재바인딩·정지 상태 재전송·TCP 종료 뒤 토큰 폐기를 확인했습니다.
+- ServerCore와 서버·도구·테스트의 생성된 설정에서 `/W4 /WX`, Debug `/MDd`, Release `/MD`를 확인했습니다.
+- `bcrypt` 직접 의존성을 SummitServer에서 제거하고 ServerCore의 전이 링크로 빌드했습니다.
+- JUnit 결과는 `build/vs/ctest-debug.xml`과 `ctest-release.xml`에 생성됐습니다.
 
-이 결과는 빌드와 회귀 검사 기록이다. 위 시간은 부하 처리량이나 네트워크 지연 측정값이 아니며 동시 접속 수·전송 빈도를 보장하지 않는다. 이번 공개 준비에서 별도의 부하 성능 실험은 실행하지 않았다. 이전 측정 보고서·JSON, 실행 파일·로그와 기존 Git 이력은 공개 묶음에 포함하지 않는다.
+같은 ServerCore 소스는 별도의 독립 빌드에서 새 UDP 검사 10개를 포함한 125개 CTest를 Debug·Release 각각 통과했습니다. SummitServer 소비 빌드에서는 ServerCore 자체 테스트를 기본 OFF로 유지했습니다.
+
+위 시간은 회귀 검사의 소요 시간이며 부하 처리량이나 네트워크 지연 측정값이 아닙니다. 이번 변경에서 별도의 부하 성능 실험은 실행하지 않았습니다.

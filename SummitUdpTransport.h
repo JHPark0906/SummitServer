@@ -1,26 +1,20 @@
 #pragma once
 
 #include "SummitMovementTransport.h"
+#include "ServerCore/Runtime/DatagramTransport.h"
 
 #include <functional>
-#include <memory>
 #include <string_view>
 
 namespace Summit
 {
-// A bounded nonblocking UDP pump. Main schedules Poll on the same JobRunner as
-// the game backend; no per-client threads or historical movement queues exist.
+// Summit message admission and handshake over the shared datagram transport.
+// Main schedules Poll on the game backend's JobRunner.
 class SummitUdpTransport final : public IMovementTransport
 {
 public:
-    using Receiver = std::function<void(ServerCore::Session::SessionId,
-        const ServerCore::Protocol::Message&)>;
-    struct Metrics
-    {
-        std::uint64_t receivedDatagrams = 0, receivedBytes = 0;
-        std::uint64_t sentDatagrams = 0, sentBytes = 0;
-        std::uint64_t rejectedDatagrams = 0, sendWouldBlock = 0, socketErrors = 0;
-    };
+    using Receiver = ServerCore::Runtime::DatagramTransport::Receiver;
+    using Metrics = ServerCore::Runtime::DatagramTransport::Metrics;
 
     SummitUdpTransport();
     ~SummitUdpTransport() override;
@@ -39,7 +33,6 @@ public:
         const ServerCore::Protocol::PreparedMessage& message) noexcept override;
 
 private:
-    struct Impl;
-    std::unique_ptr<Impl> mImpl;
+    ServerCore::Runtime::DatagramTransport mTransport;
 };
 }

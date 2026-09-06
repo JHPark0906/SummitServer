@@ -14,7 +14,7 @@ Summit 학습용 게임의 C++20 서버입니다. ServerCore의 TCP 세션·JSON
 - **AOI:** 위치 기반 격자와 진입/이탈 여유 구간을 사용해 가시 객체를 전원 프로필 명단과 분리합니다.
 - **운영 도구:** 실행 옵션, 입퇴장/채팅 로그, `/players`·`/announce` 명령, 계측과 네이티브 부하 프로그램을 제공합니다.
 
-ServerCore는 공통 TCP/IOCP·프레이밍·JSON·세션·작업 실행을 맡고, SummitServer는 게임 메시지와 UDP 소켓을 맡습니다. Summit 클라이언트가 GameEngine을 사용하지만 서버는 GameEngine·GameEditor·GameBuilder를 링크하지 않습니다. GameEngine·ServerCore·Summit·SummitServer는 각각의 저장소이며, GameEditor와 GameBuilder는 GameEngine 안의 하위 프로젝트입니다.
+ServerCore는 공통 TCP/IOCP·UDP 전송·프레이밍·JSON·세션·작업 실행을 맡고, SummitServer는 게임 메시지와 이동 전송 정책을 맡습니다. Summit 클라이언트가 GameEngine을 사용하지만 서버는 GameEngine·GameEditor·GameBuilder를 링크하지 않습니다. GameEngine·ServerCore·Summit·SummitServer는 각각의 저장소이며, GameEditor와 GameBuilder는 GameEngine 안의 하위 프로젝트입니다.
 
 ## 구조와 읽을 코드
 
@@ -23,7 +23,7 @@ ServerCore는 공통 TCP/IOCP·프레이밍·JSON·세션·작업 실행을 맡�
 | [main.cpp](main.cpp) | CLI, Host/UDP 조립, 주기 작업, 콘솔·종료·계측 수명 |
 | [SummitServerBackend](SummitServerBackend.h) | 가입·프로필·채팅, 직렬 작업, AOI와 상태 스케줄러 |
 | [SummitMovementTransport](SummitMovementTransport.h) | 게임 백엔드와 이동 전송 사이의 작은 인터페이스 |
-| [SummitUdpTransport](SummitUdpTransport.h) | UDP 소켓, 토큰·endpoint·패킷 순번, 제한된 수신 pump |
+| [SummitUdpTransport](SummitUdpTransport.h) | ServerCore DatagramTransport 어댑터, 게임 메시지 검증과 UDP Hello/Ready 응답 |
 | [ServerConsole](ServerConsole.h) | Windows/UTF-8 콘솔 입력과 명령 처리 |
 | [tests](tests) | backend/AOI/콘솔 회귀 및 실제 TCP/UDP 통합 |
 | [tests/load](tests/load) | 게임 엔진 없이 실행하는 네이티브 부하 프로그램 |
@@ -34,7 +34,7 @@ ServerCore는 공통 TCP/IOCP·프레이밍·JSON·세션·작업 실행을 맡�
 
 ## 빌드
 
-서버 실행 환경은 Windows x64와 MSVC입니다. 아래 명령에는 CMake 3.21 이상, Ninja, C++20을 지원하는 MSVC와 Windows SDK가 필요합니다. [ServerCore 소스](https://github.com/JHPark0906/ServerCore)를 기본 위치인 `../ServerCore`에 둡니다. 다른 위치는 `-DSERVERCORE_SOURCE_DIR=<경로>`로 지정합니다. CMake가 ServerCore를 같은 빌드에 추가해 라이브러리로 연결하므로 별도 설치는 필요하지 않습니다. 게임 엔진이나 게임 클라이언트는 서버 빌드의 의존성이 아닙니다.
+서버 실행 환경은 Windows x64와 MSVC입니다. 아래 명령에는 CMake 3.21 이상, Ninja, C++20을 지원하는 MSVC와 Windows SDK가 필요합니다. [ServerCore 소스](https://github.com/JHPark0906/ServerCore)를 기본 위치인 `../ServerCore`에 둡니다. 다른 위치는 `-DSERVERCORE_SOURCE_DIR=<경로>`로 지정합니다. CMake가 ServerCore를 같은 빌드에 추가해 라이브러리로 연결하므로 별도 설치는 필요하지 않습니다. `Runtime/DatagramTransport.h`가 포함된 ServerCore 버전이 필요합니다. 게임 엔진이나 게임 클라이언트는 서버 빌드의 의존성이 아닙니다.
 
 MSVC x64 도구 환경을 설정한 개발자 PowerShell에서 저장소 루트로 이동해 실행합니다. Ninja 생성기를 명시하므로 다른 기본 생성기 설정에 의존하지 않습니다.
 
@@ -98,7 +98,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/VerifyBuild.ps1
 
 이동 UDP는 TCP의 idle 시각을 갱신하지 않습니다. 가입한 클라이언트는 정지 중에도 5초마다 TCP `Heartbeat {}`를 보냅니다. TCP idle 제한은 30초입니다. 토큰은 가입 롤백/실제 TCP 종료 때 해제합니다. 현재 토큰은 암호화나 MAC를 제공하지 않으며 계정 인증과도 다릅니다.
 
-실제 UDP 소켓은 [SummitUdpTransport](SummitUdpTransport.h)의 책임입니다. ServerCore가 제공하는 것은 공유 `Protocol/DatagramCodec.h`와 JSON/Prepared 값 API이며, ServerCore Host에 범용 UDP 세션 기능이 추가된 것은 아닙니다.
+실제 UDP 소켓, 난수 토큰·endpoint·패킷 순번과 제한된 수신 pump는 ServerCore의 `Runtime::DatagramTransport`가 관리합니다. [SummitUdpTransport](SummitUdpTransport.h)는 객체 본문의 `UdpHello`·`PlayerState`만 허용하고 `UdpReady` 응답과 backend 전달을 담당합니다. 검증된 메시지만 경로와 순번을 갱신하며 UDP 플랫폼 오류는 TCP 게임 세션을 종료하지 않도록 처리합니다. ServerHost와 UDP 전송의 조립·주기·등록 수명은 SummitServer가 연결합니다.
 
 ## 틱 예산과 AOI
 

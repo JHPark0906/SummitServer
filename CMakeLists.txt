@@ -34,7 +34,7 @@ add_library(SummitServerBackend STATIC
         SummitUdpTransport.cpp
         SummitUdpTransport.h)
 target_include_directories(SummitServerBackend PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(SummitServerBackend PUBLIC ServerCore::ServerCore PRIVATE bcrypt)
+target_link_libraries(SummitServerBackend PUBLIC ServerCore::ServerCore)
 target_compile_features(SummitServerBackend PUBLIC cxx_std_20)
 
 add_executable(SummitServer main.cpp ServerConsole.cpp ServerConsole.h)
